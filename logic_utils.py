@@ -1,3 +1,4 @@
+#FIX: Refactored logic into logic_utils.py using agent mode
 def get_range_for_difficulty(difficulty: str):
     """Return (low, high) inclusive range for a given difficulty."""
     if difficulty == "Easy":

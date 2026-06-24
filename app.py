@@ -37,7 +37,13 @@ if "secret" not in st.session_state:
     st.session_state.secret = random.randint(low, high)
 
 if "attempts" not in st.session_state:
-    st.session_state.attempts = 1
+    # Bug fix: start at 0 to match the New Game reset (was 1, causing an
+    # off-by-one in the "Attempts left" display and the attempt counter).
+    st.session_state.attempts = 0
+
+if "round_id" not in st.session_state:
+    # Used in the guess input's widget key so New Game can clear the field.
+    st.session_state.round_id = 0
 
 if "score" not in st.session_state:
     st.session_state.score = 0
@@ -51,13 +57,13 @@ if "history" not in st.session_state:
 st.subheader("Make a guess")
 
 st.info(
-    f"Guess a number between 1 and 100. "
+    f"Guess a number between {low} and {high}. "
     f"Attempts left: {attempt_limit - st.session_state.attempts}"
 )
 
 raw_guess = st.text_input(
     "Enter your guess:",
-    key=f"guess_input_{difficulty}"
+    key=f"guess_input_{difficulty}_{st.session_state.round_id}"
 )
 
 col1, col2, col3 = st.columns(3)
@@ -74,6 +80,8 @@ if new_game:
     st.session_state.status = "playing"
     st.session_state.history = []
     st.session_state.score = 0
+    # Bump the round id so the guess input gets a fresh key and clears.
+    st.session_state.round_id += 1
     st.success("New game started.")
     st.rerun()
 
@@ -82,9 +90,10 @@ if st.session_state.status != "playing":
         st.success("You already won. Start a new game to play again.")
     else:
         st.error("Game over. Start a new game to try again.")
-    st.stop()
 
-if submit:
+# Bug fix: guard the submit instead of st.stop()-ing early, so the Developer
+# Debug Info panel below still renders and its score matches the result message.
+if submit and st.session_state.status == "playing":
     st.session_state.attempts += 1
 
     ok, guess_int, err = parse_guess(raw_guess)
@@ -123,4 +132,14 @@ if submit:
                 )
 
 st.divider()
+
+# Rendered after the submit handler so secret/score/attempts/history always
+# reflect the latest state — the score here matches the win/loss message.
+with st.expander("🛠️ Developer Debug Info"):
+    st.write(f"Secret number: {st.session_state.secret}")
+    st.write(f"Attempts used: {st.session_state.attempts} / {attempt_limit}")
+    st.write(f"Score: {st.session_state.score}")
+    st.write(f"Status: {st.session_state.status}")
+    st.write("Guess history:", st.session_state.history)
+
 st.caption("Built by an AI that claims this code is production-ready.")
